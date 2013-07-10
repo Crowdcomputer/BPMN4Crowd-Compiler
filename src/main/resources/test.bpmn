@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:activiti="http://activiti.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="http://www.activiti.org/test">
+  <process id="myProcess" name="demo Pictures" isExecutable="true">
+    <startEvent id="startevent1" name="Start"></startEvent>
+    <serviceTask id="servicetask1" name="upload pic" activiti:class="org.crowdcomputer.impl.MarketPlaceTask" activiti:extensionId="org.crowdcomputer.ui.task.MarketPlaceTask">
+      <extensionElements>
+        <activiti:field name="description">
+          <activiti:string>upload pic</activiti:string>
+        </activiti:field>
+        <activiti:field name="deadline">
+          <activiti:string>0y 0mo 1w 0d 0h 0m 0s</activiti:string>
+        </activiti:field>
+        <activiti:field name="number_of_instances">
+          <activiti:string>2</activiti:string>
+        </activiti:field>
+        <activiti:field name="page_url">
+          <activiti:string>http://electrocrowd.com/?title=upload&amp;bucket=6&amp;platform=crowdcomputer&amp;parent=dev.crowdcomputer.org</activiti:string>
+        </activiti:field>
+        <activiti:field name="reward">
+          <activiti:string>1</activiti:string>
+        </activiti:field>
+        <activiti:field name="platform">
+          <activiti:string>CCM</activiti:string>
+        </activiti:field>
+        <activiti:field name="input">
+          <activiti:string>data</activiti:string>
+        </activiti:field>
+        <activiti:field name="output">
+          <activiti:string>data</activiti:string>
+        </activiti:field>
+        <activiti:field name="merge">
+          <activiti:string>false</activiti:string>
+        </activiti:field>
+        <activiti:field name="reward_process">
+          <activiti:string>/empty.bpmn</activiti:string>
+        </activiti:field>
+      </extensionElements>
+    </serviceTask>
+    <serviceTask id="servicetask2" name="Split Data Task" activiti:class="org.crowdcomputer.impl.SplitData" activiti:extensionId="org.crowdcomputer.ui.data.SplitData">
+      <extensionElements>
+        <activiti:field name="operation">
+          <activiti:string>SplitN</activiti:string>
+        </activiti:field>
+        <activiti:field name="n">
+          <activiti:string>2</activiti:string>
+        </activiti:field>
+        <activiti:field name="m">
+          <activiti:string>0</activiti:string>
+        </activiti:field>
+        <activiti:field name="input">
+          <activiti:string>data</activiti:string>
+        </activiti:field>
+        <activiti:field name="output">
+          <activiti:string>data</activiti:string>
+        </activiti:field>
+      </extensionElements>
+    </serviceTask>
+    <serviceTask id="servicetask4" name="categorize" activiti:class="org.crowdcomputer.impl.MarketPlaceTask" activiti:extensionId="org.crowdcomputer.ui.task.MarketPlaceTask">
+      <extensionElements>
+        <activiti:field name="description">
+          <activiti:string>categorize</activiti:string>
+        </activiti:field>
+        <activiti:field name="deadline">
+          <activiti:string>0y 0mo 1w 0d 0h 0m 0s</activiti:string>
+        </activiti:field>
+        <activiti:field name="number_of_instances">
+          <activiti:string>1</activiti:string>
+        </activiti:field>
+        <activiti:field name="page_url">
+          <activiti:string>http://electrocrowd.com/?title=category&amp;bucket=6&amp;platform=crowdcomputer&amp;parent=dev.crowdcomputer.org</activiti:string>
+        </activiti:field>
+        <activiti:field name="reward">
+          <activiti:string>1</activiti:string>
+        </activiti:field>
+        <activiti:field name="platform">
+          <activiti:string>CCM</activiti:string>
+        </activiti:field>
+        <activiti:field name="input">
+          <activiti:string>data</activiti:string>
+        </activiti:field>
+        <activiti:field name="output">
+          <activiti:string>data2</activiti:string>
+        </activiti:field>
+        <activiti:field name="merge">
+          <activiti:string>false</activiti:string>
+        </activiti:field>
+        <activiti:field name="reward_process">
+          <activiti:string>/empty.bpmn</activiti:string>
+        </activiti:field>
+      </extensionElements>
+    </serviceTask>
+    <parallelGateway id="parallelgateway1" name="Parallel Gateway"></parallelGateway>
+    <parallelGateway id="parallelgateway2" name="Parallel Gateway"></parallelGateway>
+    <endEvent id="endevent1" name="End"></endEvent>
+    <serviceTask id="servicetask6" name="Join Object Task" activiti:class="org.crowdcomputer.impl.JoinObject" activiti:extensionId="org.crowdcomputer.ui.data.JoinObject">
+      <extensionElements>
+        <activiti:field name="field">
+          <activiti:string>resource_id</activiti:string>
+        </activiti:field>
+        <activiti:field name="input">
+          <activiti:string>data1,data2</activiti:string>
+        </activiti:field>
+        <activiti:field name="output">
+          <activiti:string>data</activiti:string>
+        </activiti:field>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="flow2" sourceRef="parallelgateway1" targetRef="servicetask6"></sequenceFlow>
+    <sequenceFlow id="flow3" sourceRef="servicetask6" targetRef="servicetask9"></sequenceFlow>
+    <sequenceFlow id="flow6" sourceRef="parallelgateway2" targetRef="servicetask4"></sequenceFlow>
+    <sequenceFlow id="flow7" sourceRef="parallelgateway2" targetRef="servicetask8"></sequenceFlow>
+    <sequenceFlow id="flow8" sourceRef="servicetask2" targetRef="parallelgateway2"></sequenceFlow>
+    <sequenceFlow id="flow10" sourceRef="startevent1" targetRef="servicetask1"></sequenceFlow>
+    <sequenceFlow id="flow14" sourceRef="servicetask1" targetRef="servicetask2"></sequenceFlow>
+    <sequenceFlow id="flow15" sourceRef="servicetask8" targetRef="parallelgateway1"></sequenceFlow>
+    <sequenceFlow id="flow16" sourceRef="servicetask4" targetRef="parallelgateway1"></sequenceFlow>
+    <serviceTask id="servicetask8" name="annotate" activiti:class="org.crowdcomputer.impl.MarketPlaceTask" activiti:extensionId="org.crowdcomputer.ui.task.MarketPlaceTask">
+      <extensionElements>
+        <activiti:field name="description">
+          <activiti:string>tag</activiti:string>
+        </activiti:field>
+        <activiti:field name="deadline">
+          <activiti:string>0y 0mo 1w 0d 0h 0m 0s</activiti:string>
+        </activiti:field>
+        <activiti:field name="number_of_instances">
+          <activiti:string>2</activiti:string>
+        </activiti:field>
+        <activiti:field name="page_url">
+          <activiti:string>http://electrocrowd.com/?title=annotation&amp;bucket=6&amp;platform=crowdcomputer&amp;parent=dev.crowdcomputer.org</activiti:string>
+        </activiti:field>
+        <activiti:field name="reward">
+          <activiti:string>1.0</activiti:string>
+        </activiti:field>
+        <activiti:field name="platform">
+          <activiti:string>CCM</activiti:string>
+        </activiti:field>
+        <activiti:field name="merge">
+          <activiti:string>false</activiti:string>
+        </activiti:field>
+        <activiti:field name="input">
+          <activiti:string>data</activiti:string>
+        </activiti:field>
+        <activiti:field name="output">
+          <activiti:string>data1</activiti:string>
+        </activiti:field>
+      </extensionElements>
+    </serviceTask>
+    <serviceTask id="servicetask9" name="finalize" activiti:class="org.crowdcomputer.impl.NewsletterTask" activiti:extensionId="org.crowdcomputer.ui.task.NewsletterTask">
+      <extensionElements>
+        <activiti:field name="description">
+          <activiti:string>resume</activiti:string>
+        </activiti:field>
+        <activiti:field name="deadline">
+          <activiti:string>0y 0mo 1w 0d 0h 0m 0s</activiti:string>
+        </activiti:field>
+        <activiti:field name="emails">
+          <activiti:string>stefano.tranquillini@gmail.com	</activiti:string>
+        </activiti:field>
+        <activiti:field name="page_url">
+          <activiti:string>http://electrocrowd.com/?title=validate&amp;bucket=6&amp;platform=crowdcomputer&amp;parent=dev.crowdcomputer.org</activiti:string>
+        </activiti:field>
+        <activiti:field name="reward">
+          <activiti:string>0.0</activiti:string>
+        </activiti:field>
+        <activiti:field name="platform">
+          <activiti:string>CCM</activiti:string>
+        </activiti:field>
+        <activiti:field name="merge">
+          <activiti:string>false</activiti:string>
+        </activiti:field>
+        <activiti:field name="input">
+          <activiti:string>data</activiti:string>
+        </activiti:field>
+        <activiti:field name="output">
+          <activiti:string>data</activiti:string>
+        </activiti:field>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="flow17" sourceRef="servicetask9" targetRef="endevent1"></sequenceFlow>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_myProcess">
+    <bpmndi:BPMNPlane bpmnElement="myProcess" id="BPMNPlane_myProcess">
+      <bpmndi:BPMNShape bpmnElement="startevent1" id="BPMNShape_startevent1">
+        <omgdc:Bounds height="35.0" width="35.0" x="160.0" y="380.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="servicetask1" id="BPMNShape_servicetask1">
+        <omgdc:Bounds height="55.0" width="105.0" x="260.0" y="370.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="servicetask2" id="BPMNShape_servicetask2">
+        <omgdc:Bounds height="55.0" width="105.0" x="401.0" y="375.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="servicetask4" id="BPMNShape_servicetask4">
+        <omgdc:Bounds height="55.0" width="105.0" x="650.0" y="478.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="parallelgateway1" id="BPMNShape_parallelgateway1">
+        <omgdc:Bounds height="40.0" width="40.0" x="950.0" y="389.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="parallelgateway2" id="BPMNShape_parallelgateway2">
+        <omgdc:Bounds height="40.0" width="40.0" x="568.0" y="382.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="endevent1" id="BPMNShape_endevent1">
+        <omgdc:Bounds height="35.0" width="35.0" x="1280.0" y="385.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="servicetask6" id="BPMNShape_servicetask6">
+        <omgdc:Bounds height="55.0" width="105.0" x="1010.0" y="382.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="servicetask8" id="BPMNShape_servicetask8">
+        <omgdc:Bounds height="55.0" width="105.0" x="720.0" y="283.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="servicetask9" id="BPMNShape_servicetask9">
+        <omgdc:Bounds height="55.0" width="105.0" x="1140.0" y="382.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="flow2" id="BPMNEdge_flow2">
+        <omgdi:waypoint x="990.0" y="409.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1010.0" y="409.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow3" id="BPMNEdge_flow3">
+        <omgdi:waypoint x="1115.0" y="409.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1140.0" y="409.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow6" id="BPMNEdge_flow6">
+        <omgdi:waypoint x="588.0" y="422.0"></omgdi:waypoint>
+        <omgdi:waypoint x="588.0" y="507.0"></omgdi:waypoint>
+        <omgdi:waypoint x="650.0" y="505.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow7" id="BPMNEdge_flow7">
+        <omgdi:waypoint x="588.0" y="382.0"></omgdi:waypoint>
+        <omgdi:waypoint x="585.0" y="307.0"></omgdi:waypoint>
+        <omgdi:waypoint x="720.0" y="310.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow8" id="BPMNEdge_flow8">
+        <omgdi:waypoint x="506.0" y="402.0"></omgdi:waypoint>
+        <omgdi:waypoint x="568.0" y="402.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow10" id="BPMNEdge_flow10">
+        <omgdi:waypoint x="195.0" y="397.0"></omgdi:waypoint>
+        <omgdi:waypoint x="260.0" y="397.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow14" id="BPMNEdge_flow14">
+        <omgdi:waypoint x="365.0" y="397.0"></omgdi:waypoint>
+        <omgdi:waypoint x="401.0" y="402.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow15" id="BPMNEdge_flow15">
+        <omgdi:waypoint x="825.0" y="310.0"></omgdi:waypoint>
+        <omgdi:waypoint x="970.0" y="327.0"></omgdi:waypoint>
+        <omgdi:waypoint x="970.0" y="389.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow16" id="BPMNEdge_flow16">
+        <omgdi:waypoint x="755.0" y="505.0"></omgdi:waypoint>
+        <omgdi:waypoint x="970.0" y="505.0"></omgdi:waypoint>
+        <omgdi:waypoint x="970.0" y="429.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow17" id="BPMNEdge_flow17">
+        <omgdi:waypoint x="1245.0" y="409.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1280.0" y="402.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
