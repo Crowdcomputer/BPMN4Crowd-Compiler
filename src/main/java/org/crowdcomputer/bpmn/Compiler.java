@@ -45,10 +45,10 @@ public class Compiler {
 	private ConsoleOutput output = new ConsoleOutput(true);
 
 	private static String[] bpmn4crowdTasks = {
-			"org.crowdcomputer.impl.MarketPlaceTask",
-			"org.crowdcomputer.impl.NewsletterTask",
-			"org.crowdcomputer.impl.ContestTask",
-			"org.crowdcomputer.impl.TurkTask" };
+			"org.crowdcomputer.impl.task.MarketPlaceTask",
+			"org.crowdcomputer.impl.task.NewsletterTask",
+			"org.crowdcomputer.impl.task.ContestTask",
+			"org.crowdcomputer.impl.task.TurkTask" };
 
 	private void fixChildProcesses(List<ServiceTask> myTasks) {
 		// output.print("Compiling internal Processes");
@@ -56,31 +56,38 @@ public class Compiler {
 			// log.debug("Checking {}",serviceTask.getId());
 			for (FieldExtension field : serviceTask.getFieldExtensions()) {
 				// log.debug("Field {}",field.getFieldName());
-				if (field.getFieldName().equals("validation-process")) {
+				if (field.getFieldName().equals("validation_process")) {
 					String reward_process = field.getStringValue();
-					BpmnModel model = new ModelReader().read(reward_process);
-					output.print("Compiling "+ reward_process);
-					Process process = model.getMainProcess();
-					String newId = "";
-					String oldId = reward_process;
-					if (!processed.contains(oldId)) {
-						newId = "sid-" + UUID.randomUUID();
-						processed.add(oldId);
-						processed.add(newId + ".bpmn");
-						oldAndNew.put(oldId, newId);
-						log.debug("old and new {} {}", oldId, newId + ".bpmn");
-						process.setId(newId);
-						List<ServiceTask> myTasksChild = extractTasks(process);
-						addReceiveTasks(myTasksChild, process);
-						autoLayout(model);
-						store(model);
-						generatePNG(model);
-					} else {
-						field.setStringValue(oldAndNew.get(oldId));
-						log.debug("already processed stuff {} ->{}", oldId,
-								field.getStringValue());
+					log.debug("field {}",field.getStringValue());
+					if (reward_process.trim().length() > 0) {
+						BpmnModel model = new ModelReader()
+								.read(reward_process);
+						output.println("Compiling " + reward_process);
+						Process process = model.getMainProcess();
+						String newId = "";
+						String oldId = reward_process;
+						if (!processed.contains(oldId)) {
+							newId = "sid-" + UUID.randomUUID();
+							processed.add(oldId);
+							processed.add(newId + ".bpmn");
+							oldAndNew.put(oldId, newId);
+							log.debug("old and new {} {}", oldId, newId
+									+ ".bpmn");
+							process.setId(newId);
+							List<ServiceTask> myTasksChild = extractTasks(process);
+							addReceiveTasks(myTasksChild, process);
+							autoLayout(model);
+							store(model);
+							generatePNG(model);
+							field.setStringValue(oldAndNew.get(oldId));
+						} else {
+							field.setStringValue(oldAndNew.get(oldId));
+
+							log.debug("already processed stuff {} ->{}", oldId,
+									field.getStringValue());
+						}
 					}
-					output.println(reward_process+" done");
+					output.println(reward_process + " done");
 				}
 			}
 		}
@@ -107,7 +114,7 @@ public class Compiler {
 	private void store(BpmnModel model) {
 		makeFolder();
 		BpmnXMLConverter converter = new BpmnXMLConverter();
-		output.print("Storing "+ model.getMainProcess().getName());
+		output.print("Storing " + model.getMainProcess().getName());
 		// String s_model = new String(converter.convertToXML(model));
 		// InputStream s_model = new
 		try {
@@ -146,7 +153,7 @@ public class Compiler {
 				FileUtils.copyInputStreamToFile(inputStream, new File(
 						defaultFolder + File.separator
 								+ model.getMainProcess().getId() + ".png"));
-				output.println("Image stored to "+ f.getAbsolutePath());
+				output.println("Image stored to " + f.getAbsolutePath());
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -172,7 +179,7 @@ public class Compiler {
 			List<SequenceFlow> outgoing = serviceTask.getOutgoingFlows();
 			int i = 0;
 			for (SequenceFlow out : outgoing) {
-				output.print(".");
+				output.print("...");
 				log.debug("fixing outgoing {} {}", out.getSourceRef(),
 						out.getTargetRef());
 				// create receive task
@@ -212,28 +219,31 @@ public class Compiler {
 	}
 
 	public void compileMain(String file, String zipfile) {
-		output.colorPrintln(ConsoleOutput.ANSI_GREEN,"[BPMN4Crowd COMPILER]\n");
-		output.colorPrintln(ConsoleOutput.ANSI_RESET,"Compiling main file "+ file);
+		output.colorPrintln(ConsoleOutput.ANSI_GREEN, "[BPMN4Crowd COMPILER]\n");
+		output.colorPrintln(ConsoleOutput.ANSI_RESET, "Compiling main file "
+				+ file);
 		BpmnModel model = new ModelReader().read(file);
 		Process process = model.getMainProcess();
 		String newId = "sid-main-" + UUID.randomUUID();
 		String oldId = process.getId();
+		if (zipfile.length() == 0)
+			zipfile = process.getName();
 		processed.add(file);
 		processed.add(newId + ".bpmn");
 		process.setId(newId);
 		List<ServiceTask> myTasks = extractTasks(process);
 		addReceiveTasks(myTasks, process);
 		autoLayout(model);
-		
+
 		fixChildProcesses(myTasks);
 		// parseSubProcesse(myTasks);
 		store(model);
 		generatePNG(model);
-		output.print("Generating zip file: "+zipfile+"..");
+		output.print("Generating zip file: " + zipfile + "...");
 		AppZip appZip = new AppZip("export", zipfile);
 		appZip.zip();
 		output.print("done\n");
-		output.print( file+" has been compiled.\n");
+		output.print(file + " has been compiled.\n");
 		output.print("removing junk...");
 		try {
 			FileUtils.deleteDirectory(new File("export"));
@@ -242,9 +252,11 @@ public class Compiler {
 			e.printStackTrace();
 		}
 		output.print("done\n");
-		output.colorPrintln(ConsoleOutput.ANSI_GREEN,"Zip "+zipfile+".zip create and ready to be deployed");
-		output.colorPrintln(ConsoleOutput.ANSI_GREEN,"\n\n Enjoy");
-		output.colorPrintln(ConsoleOutput.ANSI_RED,"BPMN4Crowd - stefano.tranquillini@gmail.com");
+		output.colorPrintln(ConsoleOutput.ANSI_GREEN, "Zip " + zipfile
+				+ ".zip create and ready to be deployed");
+		output.colorPrintln(ConsoleOutput.ANSI_GREEN, "\n\n Enjoy");
+		output.colorPrintln(ConsoleOutput.ANSI_RED,
+				"BPMN4Crowd - stefano.tranquillini@gmail.com");
 
 	}
 
@@ -252,21 +264,16 @@ public class Compiler {
 
 		String file = "";
 		String zipfile = "";
-		System.out.println(args.length);
-		if (args.length>0){
+		if (args.length > 0) {
 			file = args[0];
-			System.out.println(file);
-		}
-		else
-			file = "/test.bpmn";
-		if (args.length>1){
+		} else
+			file = "/Users/stefanotranquillini/sw/CroCO/BpmnCompiler/src/main/resources/test.bpmn";
+		if (args.length > 1) {
 			zipfile = args[1];
-			System.out.println(zipfile);
-		}
-		else
-			zipfile = "toDeploy";
+		} else
+			zipfile = "";
 		Compiler compiler = new Compiler();
-		compiler.compileMain(file,zipfile);
+		compiler.compileMain(file, zipfile);
 		System.exit(0);
 		// response.getOutputStream().print(s_model);
 
