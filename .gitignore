@@ -4,3 +4,5 @@
 target/
 *.class
 *.zip
+image_process.bpmn
+*.bpmn
