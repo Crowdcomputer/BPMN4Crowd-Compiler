@@ -21,7 +21,6 @@ public class ModelReader {
 
 	public BpmnModel read(String file) {
 //		log.info("Loading process from {}", file);
-		log.debug("init {}", file);
 		BpmnXMLConverter converter = new BpmnXMLConverter();
 		XMLInputFactory f = XMLInputFactory.newInstance();
 		XMLStreamReader r = null;

@@ -12,22 +12,20 @@ import java.util.zip.ZipOutputStream;
 public class AppZip {
 	List<String> fileList;
 	private String OUTPUT_ZIP_FILE = "ZipToUpload.zip";
-	private String SOURCE_FOLDER = "export";
 
-	public AppZip(String src, String output) {
-		fileList = new ArrayList<String>();
+	public AppZip(ArrayList<String> filelist, String output) {
+		this.fileList = filelist;
 		this.OUTPUT_ZIP_FILE = output + ".zip";
-		this.SOURCE_FOLDER = src;
+//		this.SOURCE_FOLDER = filelist;
 	}
 
 	public void zip() {
-		generateFileList(new File(SOURCE_FOLDER));
+//		generateFileList(new File(SOURCE_FOLDER));
 		zipIt(OUTPUT_ZIP_FILE);
 	}
 	
 	public void delete(){
 		fileList = null;
-		generateFileList(new File(SOURCE_FOLDER));
 		for (String file  : fileList) 	{
 			File f = new File(file);
 			if (!f.delete()){
@@ -57,8 +55,7 @@ public class AppZip {
 				ZipEntry ze = new ZipEntry(file);
 				zos.putNextEntry(ze);
 
-				FileInputStream in = new FileInputStream(SOURCE_FOLDER
-						+ File.separator + file);
+				FileInputStream in = new FileInputStream(file);
 
 				int len;
 				while ((len = in.read(buffer)) > 0) {
@@ -66,7 +63,9 @@ public class AppZip {
 				}
 
 				in.close();
-			}
+			    File f = new File(file);
+                f.delete();
+            }
 
 			zos.closeEntry();
 			// remember close it

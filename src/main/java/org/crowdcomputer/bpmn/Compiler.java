@@ -4,7 +4,6 @@ import org.activiti.bpmn.BpmnAutoLayout;
 import org.activiti.bpmn.converter.BpmnXMLConverter;
 import org.activiti.bpmn.model.*;
 import org.activiti.bpmn.model.Process;
-import org.activiti.engine.impl.bpmn.diagram.ProcessDiagramGenerator;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.crowdcomputer.bpmn.utils.AppZip;
@@ -14,17 +13,15 @@ import org.crowdcomputer.bpmn.utils.ModelReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.*;
 
 public class Compiler {
     private org.apache.logging.log4j.Logger log = LogManager.getLogger(this.getClass());
 
-    private String file = "";
-    private Set<String> processed = new HashSet<String>();
-    private HashMap<String, String> oldAndNew = new HashMap<String, String>();
-    private static String defaultFolder = "export";
-    private ConsoleOutput output = new ConsoleOutput(true);
+    private static String defaultFolder = "";
+    private ConsoleOutput output = new ConsoleOutput(false);
+    private ArrayList<String> fileList = new ArrayList<String>();
+    private HashSet<String> processed = new HashSet<String>();
 
     private static String[] bpmn4crowdTasks = {
             "org.crowdcomputer.impl.task.MarketPlaceTask",
@@ -32,67 +29,41 @@ public class Compiler {
             "org.crowdcomputer.impl.task.ContestTask",
             "org.crowdcomputer.impl.task.TurkTask",
             "org.crowdcomputer.impl.tactic.CreateTask",
-            "org.crowdcomputer.impl.tactic.CreateInstance"};
+    };
+    private static String[] bpmn4crowdFakeTask = {
+            "org.crowdcomputer.impl.tactic.PickTask",
+            "org.crowdcomputer.impl.tactic.ReceiveResult"
+    };
+    private static String[] bpmn4crowdTacticTask = {
+            "org.crowdcomputer.impl.tactic.RewardTaskProcess",
+            "org.crowdcomputer.impl.tactic.ValidationTask"
+    };
+
+    private static String[] bpmn4crowdCallProcessTask = {
+            "org.crowdcomputer.impl.tactic.RewardTaskProcess",
+            "org.crowdcomputer.impl.tactic.ValidationTask",
+            "org.crowdcomputer.impl.tactic.CreateTask"
+    };
+
     private static String[] int_processes = {
             "validation_process",
-            "tactic_process"
+            "tactic_process",
+            "reward_process",
     };
-    private void fixChildProcesses(List<ServiceTask> myTasks) {
-//         output.print("Compiling internal Processes " + myTasks.size());
-        for (ServiceTask serviceTask : myTasks) {
-//            output.println(serviceTask.getId() + " - " + serviceTask.getFieldExtensions().size());
-            // log.debug("Checking {}",serviceTask.getId());
-            for (FieldExtension field : serviceTask.getFieldExtensions()) {
-//                 output.println("Field "+ field.getFieldName() + " " + Arrays.asList(int_processes));
 
-                if (Arrays.asList(int_processes).contains(field.getFieldName())) {
-                    String reward_process = field.getStringValue();
-                    log.debug("field {}", field.getStringValue());
-                    if (reward_process.trim().length() > 0) {
-                        BpmnModel model = new ModelReader()
-                                .read(reward_process);
-                        output.println("Compiling " + reward_process);
-                        Process process = model.getMainProcess();
-                        String newId = "";
-                        String oldId = reward_process;
-                        if (!processed.contains(oldId)) {
-                            newId = "sid-" + UUID.randomUUID();
-                            processed.add(oldId);
-                            processed.add(newId + ".bpmn");
-                            oldAndNew.put(oldId, newId);
-                            log.debug("old and new {} {}", oldId, newId
-                                    + ".bpmn");
-                            process.setId(newId);
-                            List<ServiceTask> myTasksChild = extractTasks(process);
-                            addReceiveTasks(myTasksChild, process);
-                            autoLayout(model);
-                            store(model);
-                            generatePNG(model);
-                            field.setStringValue(oldAndNew.get(oldId));
-                        } else {
-                            field.setStringValue(oldAndNew.get(oldId));
 
-                            log.debug("already processed stuff {} ->{}", oldId,
-                                    field.getStringValue());
-                        }
-                    }
-                    output.println(reward_process + " done");
-                }
-            }
-        }
-    }
-
-    private List<ServiceTask> extractTasks(Process process) {
-        output.print("Extracting BPMN4Crowd tasks..");
+    private List<ServiceTask> extractTasks(Process process, String[] list) {
+//        output.print("Extracting BPMN4Crowd tasks..");
         Collection<FlowElement> elements = process.getFlowElements();
         List<ServiceTask> ret = new ArrayList<ServiceTask>();
         for (FlowElement flowElement : elements) {
             if (flowElement instanceof ServiceTask) {
                 ServiceTask stask = ((ServiceTask) flowElement);
-                if (Arrays.asList(bpmn4crowdTasks).contains(
+//                all the tasks that are bpm4crowdTasks
+                if (Arrays.asList(list).contains(
                         stask.getImplementation())) {
                     ret.add(stask);
-                    log.debug("found service Task {}", stask.getName());
+//                    log.debug("found service Task {}", stask.getName());
                 }
             }
         }
@@ -100,17 +71,34 @@ public class Compiler {
         return ret;
     }
 
+
+    private ServiceTask extractTaskCustom(Process process) {
+        Collection<FlowElement> elements = process.getFlowElements();
+        for (FlowElement flowElement : elements) {
+            if (flowElement instanceof ServiceTask) {
+                ServiceTask stask = ((ServiceTask) flowElement);
+                if (stask.getImplementation().equals("org.crowdcomputer.impl.tactic.CreateTask"))
+                    return stask;
+            }
+        }
+        return null;
+    }
+
+
     private void store(BpmnModel model) {
         makeFolder();
         BpmnXMLConverter converter = new BpmnXMLConverter();
-        output.print("Storing " + model.getMainProcess().getName());
+//        output.print("Storing " + model.getMainProcess().getName());
+        log.debug("name of process {}", model.getMainProcess().getId());
         // String s_model = new String(converter.convertToXML(model));
         // InputStream s_model = new
         try {
             FileUtils.copyInputStreamToFile(
                     new ByteArrayInputStream(converter.convertToXML(model)),
-                    new File(defaultFolder + File.separator
-                            + model.getMainProcess().getId() + ".bpmn"));
+                    new File(model.getMainProcess().getId() + ".bpmn"));
+            if (!fileList.contains(model.getMainProcess().getId() + ".bpmn"))
+                fileList.add(model.getMainProcess().getId() + ".bpmn");
+
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -127,32 +115,6 @@ public class Compiler {
 
     }
 
-    private void parseSubProcesse(List<ServiceTask> myTasks) {
-        // TODO Auto-generated method stub
-
-    }
-
-    private void generatePNG(BpmnModel model) {
-        if (false) {
-            try {
-                ProcessDiagramGenerator pdg = new ProcessDiagramGenerator();
-                InputStream inputStream = pdg.generatePngDiagram(model);
-                File f = null;
-
-                FileUtils.copyInputStreamToFile(inputStream, new File(
-                        defaultFolder + File.separator
-                                + model.getMainProcess().getId() + ".png"));
-                output.println("Image stored to " + f.getAbsolutePath());
-            } catch (Exception e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                log.error("something went wrong");
-            }
-        } else {
-            log.debug("Generation of PNG does not work");
-        }
-
-    }
 
     private void autoLayout(BpmnModel model) {
         output.print("Rigenerating layout.");
@@ -163,7 +125,7 @@ public class Compiler {
     private void addReceiveTasks(List<ServiceTask> myTasks, Process process) {
         output.print("Modifing BPMN4Crowd Tasks..");
         for (ServiceTask serviceTask : myTasks) {
-            log.debug("Processing {}", serviceTask.getId());
+            log.debug("Adding receiver for {} in {}", serviceTask.getId(), process.getName());
             // List<SequenceFlow> incoming = serviceTask.getIncomingFlows();
             List<SequenceFlow> outgoing = serviceTask.getOutgoingFlows();
             int i = 0;
@@ -177,7 +139,7 @@ public class Compiler {
                 // add it to the process
                 process.addFlowElement(rtask);
                 // old outgoing flow now points to receive task
-                // out.setTargetRef(rtask.getId());
+//                out.setTargetRef(rtask.getId());
                 process.removeFlowElement(out.getId());
                 log.debug("removed");
                 process.addFlowElement(createSequenceFlow(rtask.getId(),
@@ -199,37 +161,113 @@ public class Compiler {
         return ret;
     }
 
+    private ReceiveTask createPick(String id, String name) {
+        ReceiveTask ret = new ReceiveTask();
+        ret.setId(id + "pick");
+        ret.setName(name + " pick");
+        return ret;
+    }
+
     private SequenceFlow createSequenceFlow(String from, String to) {
-        log.debug("create flow {} {}", from, to);
+//        log.debug("create flow {} {}", from, to);
         SequenceFlow flow = new SequenceFlow();
         flow.setSourceRef(from);
         flow.setTargetRef(to);
         return flow;
     }
 
-    public void compileMain(String file, String zipfile) {
+    private void replaceFakeTask(ServiceTask createTask) {
+        String file = searchFilename(createTask).getStringValue();
+        BpmnModel model;
+        if (!file.endsWith(".bpmn"))
+            file = file + ".bpmn";
+        model = new ModelReader().read(file);
+        Process process = model.getMainProcess();
+        List<ServiceTask> tasksThatNeedsToBeReplaces = extractTasks(process, bpmn4crowdFakeTask);
+        log.debug("tasksThatNeedsToBeReplaces {}", tasksThatNeedsToBeReplaces.size());
+        replaceTask(tasksThatNeedsToBeReplaces, process, createTask);
+        log.debug("adding {} {} ", model.getMainProcess().getId(), model.getMainProcess().getName());
+        log.debug("model {} ", model);
+        store(model);
+
+
+    }
+
+    private String fixProcess(String file, String prefix) {
+
+        String newId = prefix + UUID.randomUUID();
+
+        if (!file.endsWith(".bpmn"))
+            file = file + ".bpmn";
+        log.debug("modifiying {}->{}", file, newId);
+        BpmnModel model = new ModelReader().read(file);
+        Process process = model.getMainProcess();
+        if (process.getId().startsWith("sid-"))
+            newId = process.getId();
+        log.debug("newId is {}", newId);
+        process.setId(newId);
+//        create process with new id.
+        store(model);
+        //get all the task that need a received
+//        extract task that needs edits
+        List<ServiceTask> tasksThatNeedsAReceiver = extractTasks(process, bpmn4crowdTasks);
+        log.debug("tasksThatNeedsAReceiver {}", tasksThatNeedsAReceiver.size());
+
+        //add a receiver
+//        for all of these tasks add a receivers (we need it )
+        addReceiveTasks(tasksThatNeedsAReceiver, process);
+//        save edits
+        store(model);
+        autoLayout(model);
+
+        //for all the tasks, check if it is a customtactic, if so process it
+        ServiceTask mainTask = extractTaskCustom(process);
+        log.debug("MainTask {}", mainTask);
+
+        if (mainTask != null) {
+            FieldExtension field = searchFilename(mainTask);
+            String newName = fixProcess(field.getStringValue(), "sid-");
+            field.setStringValue(newName);
+            replaceFakeTask(mainTask);
+        }
+// //       process validation and reward tasks (validation,reward,customtactic)
+        List<ServiceTask> tasksThatNeedToBeProcessed = extractTasks(process, bpmn4crowdCallProcessTask);
+        log.debug("tasksThatNeedToBeProcessed {}", tasksThatNeedToBeProcessed.size());
+
+        for (ServiceTask taskProcess : tasksThatNeedToBeProcessed) {
+//            return the filed, later it have to be change
+            FieldExtension field = searchFilename(taskProcess);
+            log.debug("this file is inside {}  ", field.getStringValue());
+//            if (!processed.contains(field.getStringValue())) {
+            String newName = fixProcess(field.getStringValue(), "sid-");
+            field.setStringValue(newName);
+
+        }
+        store(model);
+        processed.add(newId);
+        return newId;
+    }
+
+    private FieldExtension searchFilename(ServiceTask taskProcess) {
+        for (FieldExtension field : taskProcess.getFieldExtensions()) {
+            if (Arrays.asList(int_processes).contains(field.getFieldName())) {
+                return field;
+            }
+        }
+        return null;
+    }
+
+    public void Compile(String file, String zipfile) {
         output.colorPrintln(ConsoleOutput.ANSI_GREEN, "[BPMN4Crowd COMPILER]\n");
         output.colorPrintln(ConsoleOutput.ANSI_RESET, "Compiling main file "
                 + file);
-        BpmnModel model = new ModelReader().read(file);
-        Process process = model.getMainProcess();
-        String newId = "sid-main-" + UUID.randomUUID();
-        String oldId = process.getId();
+        log.debug(file);
         if (zipfile.length() == 0)
-            zipfile = process.getName();
-        processed.add(file);
-        processed.add(newId + ".bpmn");
-        process.setId(newId);
-        List<ServiceTask> myTasks = extractTasks(process);
-        addReceiveTasks(myTasks, process);
-        autoLayout(model);
+            zipfile = "out";
+        fixProcess(file, "sid-main-");
 
-        fixChildProcesses(myTasks);
-        // parseSubProcesse(myTasks);
-        store(model);
-        generatePNG(model);
         output.print("Generating zip file: " + zipfile + "...");
-        AppZip appZip = new AppZip("export", zipfile);
+        AppZip appZip = new AppZip(fileList, zipfile);
         appZip.zip();
         output.print("done\n");
         output.print(file + " has been compiled.\n");
@@ -249,20 +287,60 @@ public class Compiler {
 
     }
 
-    public static void main(String[] args) {
 
+    private void replaceTask(List<ServiceTask> customTasks, Process process, ServiceTask mainTask) {
+        for (ServiceTask stask : customTasks) {
+            ReceiveTask newtask = null;
+            if (stask.getImplementation().equals("org.crowdcomputer.impl.tactic.PickTask")) {
+                log.debug("picktask");
+                newtask = createPick(mainTask.getId() + '-', mainTask.getName());
+
+            } else if (stask.getImplementation().equals("org.crowdcomputer.impl.tactic.ReceiveResult")) {
+                log.debug("receive");
+                newtask = createReceive(mainTask.getId() + '-',
+                        mainTask.getName());
+
+            }
+            substitute(stask, newtask, process);
+        }
+    }
+
+
+    private void substitute(ServiceTask remove, ReceiveTask add, Process process) {
+        process.removeFlowElement(remove.getId());
+        List<SequenceFlow> flow = remove.getIncomingFlows();
+        for (SequenceFlow sf : flow) {
+            process.addFlowElement(createSequenceFlow(sf.getSourceRef(), add.getId()));
+            process.removeFlowElement(sf.getId());
+        }
+        flow = remove.getOutgoingFlows();
+        for (SequenceFlow sf : flow) {
+            process.addFlowElement(createSequenceFlow(add.getId(), sf.getTargetRef()));
+            process.removeFlowElement(sf.getId());
+        }
+        process.addFlowElement(add);
+
+    }
+
+
+    public static void main(String[] args) {
+//        sorry, this code is a mess. if i've time i'll make it more clear.
         String file = "";
         String zipfile = "";
         if (args.length > 0) {
             file = args[0];
         } else
-            file = "testprocess.bpmn";
+            file = "image_process.bpmn";
         if (args.length > 1) {
             zipfile = args[1];
         } else
             zipfile = "";
+        System.out.println("BPMN4Crowd Compiler");
+        System.out.println("Starting ..");
         Compiler compiler = new Compiler();
-        compiler.compileMain(file, zipfile);
+        compiler.Compile(file, zipfile);
+        System.out.println("end .. check your file " + zipfile +".zip");
+        System.out.println("stefano - stefano.tranquillini@gmail.com");
         System.exit(0);
         // response.getOutputStream().print(s_model);
 
