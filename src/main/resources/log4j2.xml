@@ -6,7 +6,7 @@
     </Console>
   </appenders>
   <loggers>
-  <logger name="org.crowdcomputer" level="WARN" additivity="false">
+  <logger name="org.crowdcomputer" level="DEBUG" additivity="false">
   	<appender-ref ref="Console"/>
   </logger>
    <root level="DEBUG">
