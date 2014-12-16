@@ -33,12 +33,12 @@ public class Compiler {
             "org.crowdcomputer.impl.tactic.ReceiveResult"
     };
     private static String[] bpmn4crowdTacticTask = {
-            "org.crowdcomputer.impl.tactic.RewardTask",
+//            "org.crowdcomputer.impl.tactic.RewardTask",
             "org.crowdcomputer.impl.tactic.ValidationTask"
     };
 
     private static String[] bpmn4crowdCallProcessTask = {
-            "org.crowdcomputer.impl.tactic.RewardTask",
+//            "org.crowdcomputer.impl.tactic.RewardTask",
             "org.crowdcomputer.impl.tactic.ValidationTask",
             "org.crowdcomputer.impl.tactic.CreateTask"
     };
@@ -46,7 +46,7 @@ public class Compiler {
     private static String[] int_processes = {
             "validation_process",
             "tactic_process",
-            "reward_process",
+//            "reward_process",
     };
 
 
@@ -234,7 +234,7 @@ public class Compiler {
         store(model);
     }
 
-    private String fixProcess(String file, String prefix) {
+    private String fixProcess(String file, String prefix, boolean custom) {
 
         String newId = prefix + UUID.randomUUID();
 
@@ -268,10 +268,14 @@ public class Compiler {
 
         if (mainTask != null) {
             FieldExtension field = searchFilename(mainTask);
-            String newName = fixProcess(field.getStringValue(), "sid-");
+            String newName = fixProcess(field.getStringValue(), "sid-", true);
             field.setStringValue(newName);
             replaceFakeTask(mainTask);
+
         }
+        if (custom)
+            addEndTask(process);
+
 // //       process validation and reward tasks (validation,reward,customtactic)
         List<ServiceTask> tasksThatNeedToBeProcessed = extractTasks(process.getFlowElements(), bpmn4crowdCallProcessTask);
         addReceiveTasks(tasksThatNeedToBeProcessed, process);
@@ -291,7 +295,7 @@ public class Compiler {
             for (ServiceTask taskProcess2 : tasksThatNeedToBeProcessed2) {
                 FieldExtension field2 = searchFilename(taskProcess2);
                 log.debug("this file is inside {}  ", field2.getStringValue());
-                String newName2 = fixProcess(field2.getStringValue(), "sid-");
+                String newName2 = fixProcess(field2.getStringValue(), "sid-", false);
                 field2.setStringValue(newName2);
                 store(model);
             }
@@ -305,16 +309,83 @@ public class Compiler {
             FieldExtension field = searchFilename(taskProcess);
             log.debug("this file is inside {}  ", field.getStringValue());
 //            if (!processed.contains(field.getStringValue())) {
-            String newName = fixProcess(field.getStringValue(), "sid-");
+            String newName = fixProcess(field.getStringValue(), "sid-", false);
             field.setStringValue(newName);
             //this goes just one level down.. should be recursive
 
 
         }
+
+
         store(model);
         processed.add(newId);
         return newId;
     }
+
+
+    private void addEndTask(Process process) {
+        //check if the process is main
+        ArrayList<EndEvent> ends = new ArrayList<EndEvent>();
+        log.debug("------ process " + process.getName());
+        for (FlowElement flowElement : process.getFlowElements()) {
+            if (flowElement instanceof EndEvent) {
+                EndEvent event = ((EndEvent) flowElement);
+                ends.add(event);
+            }
+        }
+        for (EndEvent end : ends) {
+            for (SequenceFlow incoming : end.getIncomingFlows()) {
+                FlowElement source = process.getFlowElement(incoming.getSourceRef());
+                if (source instanceof ServiceTask) {
+
+                    ServiceTask source_st = ((ServiceTask) source);
+                    if (!source_st.getImplementation().equals("org.crowdcomputer.impl.tactic.TaskFinish")) {
+//                            crete the TaskFinish
+                        ServiceTask finishTask = new ServiceTask();
+                        finishTask.setId("id-theFinishTaskSetByTheCompiler" + Math.round(Math.random() * 1000));
+                        finishTask.setName("theFinishTaskSetByTheCompiler");
+                        finishTask.setExtensionId("org.crowdcomputer.ui.tactic.FinishTask");
+                        finishTask.setImplementationType(ImplementationType.IMPLEMENTATION_TYPE_CLASS);
+                        finishTask.setImplementation("org.crowdcomputer.impl.tactic.TaskFinish");
+                        process.addFlowElement(finishTask);
+                        log.debug("imp: " + finishTask.getImplementation());
+                        process.addFlowElement(createSequenceFlow(source_st.getId(), finishTask.getId()));
+                        incoming.setSourceRef(finishTask.getId());
+//                            move it beteween the end and the task
+                        log.debug("added1");
+
+
+                    }
+                } else {
+                    ServiceTask finishTask = new ServiceTask();
+
+                    finishTask.setId("id-theFinishTaskSetByTheCompiler" + Math.round(Math.random() * 1000));
+                    finishTask.setName("theFinishTaskSetByTheCompiler");
+                    finishTask.setImplementationType(ImplementationType.IMPLEMENTATION_TYPE_CLASS);
+
+                    finishTask.setExtensionId("org.crowdcomputer.ui.tactic.FinishTask");
+                    finishTask.setImplementation("org.crowdcomputer.impl.tactic.TaskFinish");
+
+                    process.addFlowElement(finishTask);
+
+
+                    process.addFlowElement(createSequenceFlow(source.getId(), finishTask.getId()));
+                    incoming.setSourceRef(finishTask.getId());
+                    log.debug("added2");
+                }
+                log.debug("source " + source.getName());
+
+            }
+            log.debug("end event");
+        }
+//                if (flowElement instanceof ServiceTask) {
+//                    ServiceTask stask = ((ServiceTask) flowElement);
+//                    if (stask.getImplementation().equals("org.crowdcomputer.impl.tactic.StopTask"))
+//                        //if there's then return
+//                        return;
+//                }
+    }
+
 
     private FieldExtension searchFilename(ServiceTask taskProcess) {
         for (FieldExtension field : taskProcess.getFieldExtensions()) {
@@ -332,7 +403,7 @@ public class Compiler {
         log.debug(file);
         if (zipfile.length() == 0)
             zipfile = "out";
-        fixProcess(file, "sid-main-");
+        fixProcess(file, "sid-main-", false);
 
         output.print("Generating zip file: " + zipfile + "...");
         AppZip appZip = new AppZip(fileList, zipfile);
@@ -440,7 +511,7 @@ public class Compiler {
         if (args.length > 0) {
             file = args[0];
         } else
-            file = "testprocess.bpmn";
+            file = "logoevaluation.bpmn";
         if (args.length > 1) {
             zipfile = args[1];
         } else
